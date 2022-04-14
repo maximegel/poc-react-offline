@@ -4,39 +4,39 @@ import { NetworkSlice } from "./networkReducer";
 import { selectOnline } from "./networkSelectors";
 
 export const networkRetryMiddleware: Middleware = (store) => {
-  return getOrBeginTransaction((transaction, action) => {
+  return getOrTrackRequest((request, action) => {
     if (isFailure(action)) {
-      const attempts = attemptsLeft(store.getState());
-      const actionsToRetry = transaction.actions
-        .map(setAttemptsLeft(attempts))
-        .map(trackRetries())
+      const retries = retriesLeft(store.getState());
+      const actionsToRetry = request.actions
+        .map(setRetriesLeft(retries))
+        .map(trackAttempts())
         .map(trackErrors(action));
-      if (noMoreAttempts(actionsToRetry)) return transaction.complete(action);
-      return transaction.retry(actionsToRetry);
+      if (noMoreRetries(actionsToRetry)) return request.complete(action);
+      return request.retry(actionsToRetry);
     }
-    if (isSuccess(action)) return transaction.complete(action);
-    return transaction.append(action);
+    if (isSuccess(action)) return request.complete(action);
+    return request.append(action);
   });
 };
 
-const attemptsLeft = (state: NetworkSlice) => (action: AnyAction) => {
-  const count = action.meta?.attempts;
+const retriesLeft = (state: NetworkSlice) => (action: AnyAction) => {
+  const count = action.meta?.retries;
   if (isNaN(count)) return undefined;
   if (count <= 0) return 0;
   if (!selectOnline(state)) return count;
   return count - 1;
 };
 
-const noMoreAttempts = (actions: AnyAction[]) =>
-  actions.some((action) => !canAttempt(action));
+const noMoreRetries = (actions: AnyAction[]) =>
+  actions.some((action) => !canRetry(action));
 
-const canAttempt = (action: AnyAction) => !(action.meta?.attempts <= 0);
+const canRetry = (action: AnyAction) => !(action.meta?.retries <= 0);
 
-const setAttemptsLeft = (fn: (action: AnyAction) => number) =>
-  setMeta((action) => ({ attempts: fn(action) }));
+const setRetriesLeft = (fn: (action: AnyAction) => number) =>
+  setMeta((action) => ({ retries: fn(action) }));
 
-const trackRetries = () =>
-  setMeta((action) => ({ retries: (action.meta?.retries ?? -1) + 1 }));
+const trackAttempts = () =>
+  setMeta((action) => ({ attempts: (action.meta?.attempts ?? 0) + 1 }));
 
 const trackErrors = (failure: AnyAction) =>
   setMeta((action) => ({
@@ -56,25 +56,25 @@ const isFailure = (action: AnyAction) =>
 const isSuccess = (action: AnyAction) =>
   action.type.toUpperCase().endsWith("SUCCESS");
 
-const getOrBeginTransaction =
-  (fn: (operations: TransactionBehavior, action: AnyAction) => AnyAction) =>
+const getOrTrackRequest =
+  (fn: (operations: RequestBehavior, action: AnyAction) => AnyAction) =>
   (next: (action: AnyAction) => AnyAction) => {
-    const transactions: TransactionMap = {};
+    const requests: RequestMap = {};
     return (action: AnyAction) => {
-      const transactionId = action.meta?.transactionId;
-      if (!transactionId) return next(action);
-      const actions = transactions[transactionId] ?? [];
-      const operations: TransactionBehavior = {
+      const requestId = action.meta?.requestId;
+      if (!requestId) return next(action);
+      const actions = requests[requestId] ?? [];
+      const operations: RequestBehavior = {
         actions,
         retry: (actionsToRetry) => {
           return operations.complete(outboxRequests(actionsToRetry));
         },
         complete: (act) => {
-          delete transactions[transactionId];
+          delete requests[requestId];
           return next(act);
         },
         append: (act) => {
-          transactions[transactionId] = [...actions, action];
+          requests[requestId] = [...actions, action];
           return next(act);
         },
       };
@@ -82,11 +82,11 @@ const getOrBeginTransaction =
     };
   };
 
-interface TransactionBehavior {
+interface RequestBehavior {
   actions: AnyAction[];
   retry: (actionsToRetry: AnyAction[]) => AnyAction;
   complete: (action: AnyAction) => AnyAction;
   append: (action: AnyAction) => AnyAction;
 }
-type TransactionMap = Record<string, Transaction>;
-type Transaction = AnyAction[];
+type RequestMap = Record<string, Request>;
+type Request = AnyAction[];

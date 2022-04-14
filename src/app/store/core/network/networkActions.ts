@@ -1,12 +1,17 @@
 import { AnyAction, createAction } from "@reduxjs/toolkit";
 
-const prefix = "network";
+const scope = "network";
 
-export const online = createAction(`${prefix}/ONLINE`);
+export const online = createAction(`${scope}/ONLINE`);
 
-export const offline = createAction(`${prefix}/OFFLINE`);
+export const offline = createAction(`${scope}/OFFLINE`);
 
 export const outboxRequests = createAction(
-  `${prefix}/OUTBOX_REQUESTS`,
+  `${scope}/OUTBOX_REQUESTS`,
+  (actions: AnyAction[]) => ({ payload: actions }),
+);
+
+export const sendRequests = createAction(
+  `${scope}/SEND_REQUESTS`,
   (actions: AnyAction[]) => ({ payload: actions }),
 );

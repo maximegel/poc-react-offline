@@ -1,18 +1,48 @@
 import { AnyAction } from "@reduxjs/toolkit";
-import { eventChannel } from "redux-saga";
-import { fork, put, race, select, take, takeLeading } from "redux-saga/effects";
-import { offline, online, outboxRequests } from "./networkActions";
-import { selectOnline } from "./networkSelectors";
+import { eventChannel, Task } from "redux-saga";
+import {
+  cancel,
+  delay,
+  fork,
+  put,
+  race,
+  select,
+  take,
+  takeEvery,
+  takeLeading,
+} from "redux-saga/effects";
+import {
+  offline,
+  online,
+  outboxRequests,
+  sendRequests,
+} from "./networkActions";
+import { selectOnline, selectPendingRequests } from "./networkSelectors";
 
 export function* networkEffects() {
   yield takeLeading(online.type, watchOnline);
+  yield takeEvery(sendRequests.type, watchSendRequests);
   yield fork(watchNetworkStatus);
   yield fork(watchRequestResults);
 }
 
 function* watchOnline() {
-  // const request: AnyAction = yield select(selectNextRequest);
-  // console.log("retry", request);
+  const task: Task = yield fork(function* () {
+    while (true) {
+      const requests: AnyAction[] = yield select(selectPendingRequests);
+      if (requests.length) yield put(sendRequests(requests));
+      yield take(outboxRequests.type);
+    }
+  });
+  yield take(offline.type);
+  yield cancel(task);
+}
+
+function* watchSendRequests({ payload }: ReturnType<typeof sendRequests>) {
+  for (const request of payload) {
+    yield put({ ...request });
+    yield delay(100);
+  }
 }
 
 function* watchNetworkStatus() {
@@ -31,16 +61,9 @@ function* watchRequestResults() {
       failure: take(isFailureOf(request)),
       success: take(isSuccessOf(request)),
     });
-    if (someFailedOverNetwork(outboxedRequests)) {
-      console.log("someFailedOverNetwork => offline");
-      yield putOffline();
-    } else if (hasFailedOverNetwork(failure)) {
-      console.log("hasFailedOverNetwork => offline");
-      yield putOffline();
-    } else {
-      console.log("online");
-      yield putOnline();
-    }
+    if (someFailedOverNetwork(outboxedRequests)) yield putOffline();
+    else if (hasFailedOverNetwork(failure)) yield putOffline();
+    else yield putOnline();
   }
 }
 
@@ -90,23 +113,23 @@ const isRequest = (action: AnyAction) =>
 
 const isOutboxedRequestsOf = (request: AnyAction) => (action: AnyAction) =>
   action.type === outboxRequests.type &&
-  action.payload?.every(isInSameTransaction(request));
+  action.payload?.every(isPartOf(request));
 
 const isFailureOf = (request: AnyAction) => (action: AnyAction) =>
-  isFailure(action) && isInSameTransaction(request)(action);
+  isFailure(action) && isPartOf(request)(action);
 
 const isFailure = (action: AnyAction) =>
   action.type.toUpperCase().endsWith("FAILURE") || !!action.error;
 
 const isSuccessOf = (request: AnyAction) => (action: AnyAction) =>
-  isSuccess(action) && isInSameTransaction(request)(action);
+  isSuccess(action) && isPartOf(request)(action);
 
 const isSuccess = (action: AnyAction) =>
   action.type.toUpperCase().endsWith("SUCCESS");
 
-const isInSameTransaction =
+const isPartOf =
   (...otherActions: AnyAction[]) =>
   (action: AnyAction) =>
     otherActions.every(
-      (other) => other.meta?.transactionId === action.meta?.transactionId,
+      (other) => other.meta?.requestId === action.meta?.requestId,
     );

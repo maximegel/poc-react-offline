@@ -19,29 +19,29 @@ export function* inventoryItemEffects() {
   yield takeEvery(remove.type, watchRemove);
 }
 
-function* watchAdd(action: ReturnType<typeof add>) {
+function* watchAdd(request: ReturnType<typeof add>) {
   try {
-    yield call(service.add, action.payload);
-    yield put(addSuccess(action));
+    yield call(service.add, request.payload);
+    yield put(addSuccess({ request }));
   } catch (error) {
-    yield put(addFailure({ action, error }));
+    yield put(addFailure({ request, error }));
   }
 }
 
-function* watchLoadMany(_: ReturnType<typeof loadMany>) {
+function* watchLoadMany(request: ReturnType<typeof loadMany>) {
   try {
     const response: InventoryItemEntity[] = yield call(service.list);
-    yield put(loadManySuccess(response));
+    yield put(loadManySuccess({ request }, response));
   } catch (error) {
-    yield put(loadManyFailure());
+    yield put(loadManyFailure({ request, error }));
   }
 }
 
-function* watchRemove({ payload }: ReturnType<typeof remove>) {
+function* watchRemove(request: ReturnType<typeof remove>) {
   try {
-    yield call(service.remove, payload);
-    yield put(removeSuccess());
+    yield call(service.remove, request.payload);
+    yield put(removeSuccess({ request }));
   } catch (error) {
-    yield put(removeFailure(payload));
+    yield put(removeFailure({ request, error }));
   }
 }

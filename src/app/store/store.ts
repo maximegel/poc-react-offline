@@ -1,29 +1,30 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import localforage from "localforage";
-import { persistReducer, persistStore } from "redux-persist";
+import { persistStore } from "redux-persist";
 import createSagaMiddleware from "redux-saga";
 import { spawn } from "redux-saga/effects";
-import { networkEffects, networkRetryMiddleware } from "./core/network";
-import { networkReducer, NETWORK_SLICE } from "./core/network/networkReducer";
+import {
+  networkEffects,
+  networkReducer,
+  networkRetryMiddleware,
+  NETWORK_SLICE,
+} from "./core/network";
 import { inventoryItemEffects, inventoryItemReducer } from "./inventoryItem";
+import { INVENTORY_ITEM_SLICE } from "./inventoryItem/inventoryItemReducer";
 
 const rootReducer = combineReducers({
-  inventoryItems: inventoryItemReducer,
+  [INVENTORY_ITEM_SLICE]: inventoryItemReducer,
   [NETWORK_SLICE]: networkReducer,
 });
 
 function* rootSaga() {
-  yield spawn(networkEffects);
   yield spawn(inventoryItemEffects);
+  yield spawn(networkEffects);
 }
 
 const sagaMiddleware = createSagaMiddleware();
 
 export const store = configureStore({
-  reducer: persistReducer(
-    { key: "root", storage: localforage, whitelist: [] },
-    rootReducer,
-  ),
+  reducer: rootReducer,
   middleware: [networkRetryMiddleware, sagaMiddleware],
 });
 
