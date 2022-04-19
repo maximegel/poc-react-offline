@@ -60,12 +60,16 @@ export function withPayload<P>(payload: P) {
   return { payload };
 }
 
-export function withoutRetries() {
-  return withMeta({ retries: 0 });
-}
-
 export function withMeta<M extends ActionMeta>(meta: M) {
   return { meta };
+}
+
+export function withoutRetries() {
+  return withRetries(0);
+}
+
+export function withRetries(count = 3) {
+  return { retries: count };
 }
 
 const isRequestAction = (action: AnyAction): action is RequestAction =>

@@ -4,18 +4,22 @@ import {
   asFailureOf,
   asRequest,
   asSuccessOf,
+  withMeta,
   withoutPayload,
   withoutRetries,
   withPayload,
   withPayloadOf,
 } from "../core/network";
+import { withErrorNotification } from "../core/notification";
 import { InventoryItemEntity } from "./inventoryItemEntity";
 
 const scope = "inventoryItem";
 
 export const add = createAction(
   `${scope}/ADD_REQUEST`,
-  asRequest((payload: AddPayload) => withPayload({ ...payload, id: uuid() })),
+  asRequest((payload: AddPayload) => ({
+    ...withPayload({ ...payload, id: uuid() }),
+  })),
 );
 export const addSuccess = createAction(
   `${scope}/ADD_SUCCESS`,
@@ -23,13 +27,23 @@ export const addSuccess = createAction(
 );
 export const addFailure = createAction(
   `${scope}/ADD_FAILURE`,
-  asFailureOf(add, ({ request }) => withPayloadOf(request)),
+  asFailureOf(add, ({ request }) => ({
+    ...withPayloadOf(request),
+    ...withMeta({
+      ...withErrorNotification({
+        title: `Failed to add item "${request.payload.model}"`,
+      }),
+    }),
+  })),
 );
 export type AddPayload = Omit<InventoryItemEntity, "id">;
 
 export const loadMany = createAction(
   `${scope}/LOAD_MANY_REQUEST`,
-  asRequest(() => ({ ...withoutPayload(), ...withoutRetries() })),
+  asRequest(() => ({
+    ...withoutPayload(),
+    ...withMeta({ ...withoutRetries() }),
+  })),
 );
 export const loadManySuccess = createAction(
   `${scope}/LOAD_MANY_SUCCESS`,
@@ -53,7 +67,14 @@ export const removeSuccess = createAction(
 );
 export const removeFailure = createAction(
   `${scope}/REMOVE_FAILURE`,
-  asFailureOf(remove, ({ request }) => withPayloadOf(request)),
+  asFailureOf(remove, ({ request }) => ({
+    ...withPayloadOf(request),
+    ...withMeta({
+      ...withErrorNotification({
+        title: `Failed to remove item "${request.payload.model}"`,
+      }),
+    }),
+  })),
 );
 export type RemovePayload = InventoryItemEntity;
 export type RemoveFailurePayload = InventoryItemEntity;

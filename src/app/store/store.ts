@@ -8,17 +8,24 @@ import {
   networkRetryMiddleware,
   NETWORK_SLICE,
 } from "./core/network";
+import {
+  notificationEffects,
+  notificationReducer,
+  NOTIFICATION_SLICE,
+} from "./core/notification";
 import { inventoryItemEffects, inventoryItemReducer } from "./inventoryItem";
 import { INVENTORY_ITEM_SLICE } from "./inventoryItem/inventoryItemReducer";
 
 const rootReducer = combineReducers({
   [INVENTORY_ITEM_SLICE]: inventoryItemReducer,
   [NETWORK_SLICE]: networkReducer,
+  [NOTIFICATION_SLICE]: notificationReducer,
 });
 
 function* rootSaga() {
   yield spawn(inventoryItemEffects);
   yield spawn(networkEffects);
+  yield spawn(notificationEffects);
 }
 
 const sagaMiddleware = createSagaMiddleware();

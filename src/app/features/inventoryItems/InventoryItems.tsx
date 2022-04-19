@@ -1,5 +1,11 @@
 import { useEffect } from "react";
+import { Toast, ToastContainer } from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "../../store";
+import {
+  notificationActions,
+  notificationSelectors,
+} from "../../store/core/notification";
+import { NotificationEntity } from "../../store/core/notification/notificationEntity";
 import {
   inventoryItemActions,
   inventoryItemSelectors,
@@ -9,6 +15,7 @@ let counter = 1;
 
 export const InventoryItems = () => {
   const items = useAppSelector(inventoryItemSelectors.selectAll);
+  const notifications = useAppSelector(notificationSelectors.selectAll);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -36,7 +43,7 @@ export const InventoryItems = () => {
                   className="btn btn-danger"
                   onClick={() => dispatch(inventoryItemActions.remove(item))}
                 >
-                  X
+                  <i className="fa fa-trash"></i>
                 </button>
               </td>
             </tr>
@@ -58,6 +65,55 @@ export const InventoryItems = () => {
           Add
         </button>
       </div>
+
+      <ToastContainer position="bottom-end" className="p-3">
+        {notifications.map((notification) => (
+          <NotificationToast
+            key={notification.id}
+            notification={notification}
+            onClear={() => dispatch(notificationActions.clear(notification))}
+          ></NotificationToast>
+        ))}
+      </ToastContainer>
     </div>
   );
 };
+
+export const NotificationToast = ({
+  notification,
+  onClear,
+}: NotificationToastProps) => {
+  return (
+    <Toast
+      key={notification.id}
+      autohide={true}
+      onClose={() => onClear && onClear()}
+    >
+      <Toast.Header>
+        <NotificationIcon variant={notification.variant}></NotificationIcon>
+        <strong className="ms-2 me-auto text-truncate">
+          {notification.title}
+        </strong>
+      </Toast.Header>
+      {notification.body && <Toast.Body>{notification.body}</Toast.Body>}
+    </Toast>
+  );
+};
+
+export interface NotificationToastProps {
+  readonly notification: NotificationEntity;
+  readonly onClear?: () => void;
+}
+
+export const NotificationIcon = ({ variant }: NotificationIconProps) =>
+  (variant === "success" && (
+    <i className="fa fa-circle-check text-success"></i>
+  )) ||
+  (variant === "error" && (
+    <i className="fa fa-circle-exclamation text-danger"></i>
+  )) ||
+  (variant === "warning" && (
+    <i className="fa fa-triangle-exclamation text-warning"></i>
+  )) || <i className="fa fa-circle-info text-info"></i>;
+
+export type NotificationIconProps = Pick<NotificationEntity, "variant">;
