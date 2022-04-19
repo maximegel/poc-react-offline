@@ -1,6 +1,9 @@
 import "./App.css";
-import { InventoryItems } from "./app/features/inventoryItems/InventoryItems";
+import { InventoryItemsContainer } from "./app/features/inventoryItems/InventoryItemsContainer";
+import { ShellContainer } from "./app/features/shell/ShellContainer";
 
-export const App = () => {
-  return <InventoryItems></InventoryItems>;
-};
+export const App = () => (
+  <ShellContainer>
+    <InventoryItemsContainer />
+  </ShellContainer>
+);

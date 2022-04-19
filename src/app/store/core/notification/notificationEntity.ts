@@ -5,7 +5,7 @@ export interface NotificationEntity {
   title: string;
   body?: string;
   priority?: NotificationPriority;
-  variant?: string;
+  variant?: NotificationVariant;
   actions?: AnyAction[];
 }
 

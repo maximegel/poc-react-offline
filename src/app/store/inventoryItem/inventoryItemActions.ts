@@ -59,7 +59,9 @@ export type LoadManySuccessPayload = InventoryItemEntity[];
 
 export const remove = createAction(
   `${scope}/REMOVE_REQUEST`,
-  asRequest((payload: RemovePayload) => ({ payload })),
+  asRequest((payload: RemovePayload) => ({
+    ...withPayload(payload),
+  })),
 );
 export const removeSuccess = createAction(
   `${scope}/REMOVE_SUCCESS`,
